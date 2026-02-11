@@ -11,15 +11,22 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Slider } from '@/components/ui/slider'
 import { Label } from '@/components/ui/label'
+import { MatrixField } from './fields/matrix-field'
+import { SignatureField } from './fields/signature-field'
+import { FileField } from './fields/file-field'
 import type { FormSchema } from '@/types/form-schema'
 
 interface FormFieldProps {
   field: Field
   readOnly?: boolean
   namePrefix?: string
+  /** Required for file uploads — the study ID for storage pathing */
+  studyId?: string
+  /** Required for file uploads — the participant ID for storage pathing */
+  participantId?: string
 }
 
-export function FormField({ field, readOnly, namePrefix }: FormFieldProps) {
+export function FormField({ field, readOnly, namePrefix, studyId, participantId }: FormFieldProps) {
   const { control } = useFormContext()
   const fieldName = namePrefix ? `${namePrefix}.${field.id}` : field.id
 
@@ -28,6 +35,60 @@ export function FormField({ field, readOnly, namePrefix }: FormFieldProps) {
     return (
       <div className="py-2">
         <p className="text-sm font-medium">{field.label}</p>
+        {field.description && (
+          <p className="text-sm text-muted-foreground">{field.description}</p>
+        )}
+      </div>
+    )
+  }
+
+  // Complex field types that manage their own form state via useFormContext
+  // These do not use the ShadcnFormField render prop pattern because they
+  // write to nested keys (e.g. fieldName.rowValue for matrix).
+  if (field.type === 'matrix') {
+    return (
+      <div className="space-y-2">
+        <Label>
+          {field.label}
+          {field.required === true && <span className="text-destructive"> *</span>}
+        </Label>
+        <MatrixField field={field} readOnly={readOnly} namePrefix={namePrefix} />
+        {field.description && (
+          <p className="text-sm text-muted-foreground">{field.description}</p>
+        )}
+      </div>
+    )
+  }
+
+  if (field.type === 'signature') {
+    return (
+      <div className="space-y-2">
+        <Label>
+          {field.label}
+          {field.required === true && <span className="text-destructive"> *</span>}
+        </Label>
+        <SignatureField field={field} readOnly={readOnly} namePrefix={namePrefix} />
+        {field.description && (
+          <p className="text-sm text-muted-foreground">{field.description}</p>
+        )}
+      </div>
+    )
+  }
+
+  if (field.type === 'file') {
+    return (
+      <div className="space-y-2">
+        <Label>
+          {field.label}
+          {field.required === true && <span className="text-destructive"> *</span>}
+        </Label>
+        <FileField
+          field={field}
+          readOnly={readOnly}
+          namePrefix={namePrefix}
+          studyId={studyId ?? ''}
+          participantId={participantId ?? ''}
+        />
         {field.description && (
           <p className="text-sm text-muted-foreground">{field.description}</p>
         )}
@@ -233,36 +294,6 @@ function renderFieldInput(
           disabled
           className="bg-muted"
         />
-      )
-
-    case 'matrix':
-      return (
-        <div className="text-sm text-muted-foreground">
-          Matrix field (coming soon)
-        </div>
-      )
-
-    case 'file':
-      return (
-        <Input
-          type="file"
-          accept={field.accept}
-          disabled={disabled}
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) {
-              // In production, this would upload to Supabase Storage
-              formField.onChange(file.name)
-            }
-          }}
-        />
-      )
-
-    case 'signature':
-      return (
-        <div className="rounded-md border border-dashed p-8 text-center text-sm text-muted-foreground">
-          Signature pad (coming in Phase 2)
-        </div>
       )
 
     default:

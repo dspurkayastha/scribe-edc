@@ -11,8 +11,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { Bell, LogOut, User } from 'lucide-react'
+import { LogOut, User } from 'lucide-react'
 import { useStudyContext } from './study-context-provider'
+import { NotificationDropdown } from './notification-dropdown'
 
 export function Header({ userEmail, userName }: { userEmail: string; userName: string }) {
   const router = useRouter()
@@ -40,9 +41,7 @@ export function Header({ userEmail, userName }: { userEmail: string; userName: s
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <NotificationDropdown />
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

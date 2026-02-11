@@ -51,6 +51,7 @@ export interface Field {
   accept?: string // file upload MIME types
   maxFileSize?: number // bytes
   rows?: number // textarea
+  matrixRows?: Option[] // matrix row items
   columns?: MatrixColumn[] // matrix type
 }
 

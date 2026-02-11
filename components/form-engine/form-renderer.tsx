@@ -18,6 +18,10 @@ interface FormRendererProps {
   onSaveDraft?: (data: Record<string, unknown>) => void
   onSubmit?: (data: Record<string, unknown>) => void
   readOnly?: boolean
+  /** Required for file upload fields — the study ID for storage pathing */
+  studyId?: string
+  /** Required for file upload fields — the participant ID for storage pathing */
+  participantId?: string
 }
 
 export function FormRenderer({
@@ -27,6 +31,8 @@ export function FormRenderer({
   onSaveDraft,
   onSubmit,
   readOnly = false,
+  studyId,
+  participantId,
 }: FormRendererProps) {
   const zodSchema = generateZodSchema(schema)
 
@@ -73,7 +79,12 @@ export function FormRenderer({
         </div>
 
         {/* Current page */}
-        <FormPage page={pagination.currentPageData} readOnly={readOnly} />
+        <FormPage
+          page={pagination.currentPageData}
+          readOnly={readOnly}
+          studyId={studyId}
+          participantId={participantId}
+        />
 
         {/* Navigation + actions */}
         <div className="flex items-center justify-between border-t pt-4">

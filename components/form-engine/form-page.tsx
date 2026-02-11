@@ -8,9 +8,13 @@ import { useExpressionEvaluator } from './hooks/use-expression-evaluator'
 interface FormPageProps {
   page: Page
   readOnly?: boolean
+  /** Passed through to FormField for file upload storage pathing */
+  studyId?: string
+  /** Passed through to FormField for file upload storage pathing */
+  participantId?: string
 }
 
-export function FormPage({ page, readOnly }: FormPageProps) {
+export function FormPage({ page, readOnly, studyId, participantId }: FormPageProps) {
   return (
     <div className="space-y-6">
       {page.title && (
@@ -29,6 +33,8 @@ export function FormPage({ page, readOnly }: FormPageProps) {
               key={section.id}
               section={section}
               readOnly={readOnly}
+              studyId={studyId}
+              participantId={participantId}
             />
           )
         }
@@ -37,6 +43,8 @@ export function FormPage({ page, readOnly }: FormPageProps) {
             key={section.id}
             section={section}
             readOnly={readOnly}
+            studyId={studyId}
+            participantId={participantId}
           />
         )
       })}

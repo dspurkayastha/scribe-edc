@@ -2,7 +2,8 @@ import { compileExpression } from 'filtrex'
 
 const MAX_EXPRESSION_LENGTH = 500
 
-const ALLOWED_FUNCTIONS: Record<string, (...args: number[]) => number | string | boolean> = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const ALLOWED_FUNCTIONS: Record<string, (...args: any[]) => any> = {
   round: (v: number, d = 0) => {
     const f = Math.pow(10, d)
     return Math.round(v * f) / f

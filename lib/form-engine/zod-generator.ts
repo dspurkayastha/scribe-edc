@@ -103,17 +103,41 @@ function buildFieldSchema(field: Field): z.ZodTypeAny {
     case 'checkbox':
       return z.array(z.string())
 
-    case 'matrix':
-      return z.record(z.string(), z.union([z.string(), z.number()]))
+    case 'matrix': {
+      // Build a typed object with each row key mapping to a string value (selected column)
+      const matrixShape: Record<string, z.ZodTypeAny> = {}
+      const matrixRows = field.matrixRows ?? []
+      if (matrixRows.length > 0) {
+        for (const row of matrixRows) {
+          matrixShape[row.value] = field.required === true
+            ? z.string().min(1, `Please select a response for "${row.label}"`)
+            : z.string().optional()
+        }
+        return z.object(matrixShape)
+      }
+      // Fallback if rows are not statically defined
+      return z.record(z.string(), z.string())
+    }
 
     case 'calculated':
       return z.union([z.string(), z.number()])
 
     case 'file':
-      return z.string().url('Invalid file URL')
+      return z.object({
+        filename: z.string().min(1, 'Filename is required'),
+        path: z.string().min(1, 'File path is required'),
+        size: z.number().positive('File size must be positive'),
+        mimeType: z.string().optional(),
+      })
 
     case 'signature':
-      return z.string()
+      return z.object({
+        name: z.string().min(2, 'Name must be at least 2 characters'),
+        confirmed: z.literal(true, {
+          error: 'Signature confirmation is required',
+        }),
+        timestamp: z.string().min(1, 'Signature timestamp is required'),
+      })
 
     default:
       return z.unknown()

@@ -8,9 +8,13 @@ interface FormSectionProps {
   section: Section
   readOnly?: boolean
   namePrefix?: string
+  /** Passed through to FormField for file upload storage pathing */
+  studyId?: string
+  /** Passed through to FormField for file upload storage pathing */
+  participantId?: string
 }
 
-export function FormSection({ section, readOnly, namePrefix }: FormSectionProps) {
+export function FormSection({ section, readOnly, namePrefix, studyId, participantId }: FormSectionProps) {
   return (
     <Card>
       <CardHeader>
@@ -26,6 +30,8 @@ export function FormSection({ section, readOnly, namePrefix }: FormSectionProps)
             field={field}
             readOnly={readOnly}
             namePrefix={namePrefix}
+            studyId={studyId}
+            participantId={participantId}
           />
         ))}
       </CardContent>

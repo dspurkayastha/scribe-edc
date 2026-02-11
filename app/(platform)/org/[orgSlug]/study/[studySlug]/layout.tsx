@@ -24,7 +24,7 @@ export default async function StudyLayout({
       id,
       slug,
       name,
-      description,
+      short_name,
       organizations (
         id,
         slug,
@@ -46,23 +46,28 @@ export default async function StudyLayout({
   // Get user memberships from JWT
   const memberships = await getUserMemberships();
   const userMembership = memberships.find(
-    (m) => m.study_id === study.id && m.is_active
+    (m) => m.study_id === study.id
   );
 
   if (!userMembership) {
     redirect("/select-study");
   }
 
+  const studyContext = {
+    orgSlug,
+    studySlug,
+    studyId: study.id,
+    orgId: org.id,
+    userRole: userMembership.role,
+    siteId: userMembership.site_id,
+  };
+
   return (
-    <StudyContextProvider
-      study={study}
-      organization={org}
-      userMembership={userMembership}
-    >
+    <StudyContextProvider value={studyContext}>
       <div className="flex h-screen">
         <Sidebar />
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header />
+          <Header userEmail={user.email ?? ''} userName={user.user_metadata?.full_name ?? user.email ?? ''} />
           <Breadcrumbs />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>

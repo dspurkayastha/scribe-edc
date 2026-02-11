@@ -10,9 +10,13 @@ import { Plus, Trash2 } from 'lucide-react'
 interface RepeatableSectionProps {
   section: Section
   readOnly?: boolean
+  /** Passed through to FormField for file upload storage pathing */
+  studyId?: string
+  /** Passed through to FormField for file upload storage pathing */
+  participantId?: string
 }
 
-export function RepeatableSection({ section, readOnly }: RepeatableSectionProps) {
+export function RepeatableSection({ section, readOnly, studyId, participantId }: RepeatableSectionProps) {
   const { control } = useFormContext()
   const { fields, append, remove } = useFieldArray({
     control,
@@ -87,6 +91,8 @@ export function RepeatableSection({ section, readOnly }: RepeatableSectionProps)
                   section={{ ...section, fields: [field], repeatable: false }}
                   namePrefix={`${section.id}.${index}`}
                   readOnly={readOnly}
+                  studyId={studyId}
+                  participantId={participantId}
                 />
               ))}
             </div>

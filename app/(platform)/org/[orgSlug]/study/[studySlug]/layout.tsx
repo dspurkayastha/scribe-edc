@@ -38,7 +38,7 @@ export default async function StudyLayout({
     redirect("/select-study");
   }
 
-  const org = study.organizations as any;
+  const org = study.organizations as unknown as { id: string; slug: string; name: string };
   if (org.slug !== orgSlug) {
     redirect("/select-study");
   }

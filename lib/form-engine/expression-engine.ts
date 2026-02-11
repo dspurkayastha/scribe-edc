@@ -81,7 +81,7 @@ export function evaluateExpression(
     const context = buildExpressionContext(data, crossFormData)
 
     const fn = compileExpression(resolved, {
-      extraFunctions: ALLOWED_FUNCTIONS as Record<string, Function>,
+      extraFunctions: ALLOWED_FUNCTIONS as Record<string, (...args: unknown[]) => unknown>,
     })
 
     const result = fn(context)

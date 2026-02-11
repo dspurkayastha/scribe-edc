@@ -112,30 +112,24 @@ export default async function ParticipantDetailPage({
 
   // Fetch event_forms join table to know which forms are expected per event
   const eventIds = (studyEvents ?? []).map((e) => e.id)
-  const { data: eventForms } = eventIds.length > 0
-    ? await supabase
+  const eventForms = eventIds.length > 0
+    ? (await supabase
         .from('event_forms')
-        .select(`
-          id,
-          event_id,
-          form_id,
-          is_required,
-          sort_order
-        `)
+        .select('id, event_id, form_id, is_required, sort_order')
         .in('event_id', eventIds)
-        .order('sort_order')
-    : { data: [] as any[] }
+        .order('sort_order')).data ?? []
+    : []
 
   // Fetch all form definitions referenced by event_forms
-  const formIds = [...new Set((eventForms ?? []).map((ef: any) => ef.form_id))]
-  const { data: formDefs } = formIds.length > 0
-    ? await supabase
+  const formIds = [...new Set(eventForms.map((ef) => ef.form_id))]
+  const formDefs = formIds.length > 0
+    ? (await supabase
         .from('form_definitions')
         .select('id, slug, title, version, is_active')
-        .in('id', formIds)
-    : { data: [] as any[] }
+        .in('id', formIds)).data ?? []
+    : []
 
-  const formDefMap = new Map((formDefs ?? []).map((f: any) => [f.id, f]))
+  const formDefMap = new Map(formDefs.map((f) => [f.id, f]))
 
   // Also fetch form definitions for any unscheduled responses
   const unscheduledFormIds = formResponses
@@ -177,9 +171,9 @@ export default async function ParticipantDetailPage({
   const schedule: ScheduleForm[] = []
 
   for (const event of studyEvents ?? []) {
-    const formsForEvent = (eventForms ?? [])
-      .filter((ef: any) => ef.event_id === event.id)
-      .sort((a: any, b: any) => a.sort_order - b.sort_order)
+    const formsForEvent = eventForms
+      .filter((ef) => ef.event_id === event.id)
+      .sort((a, b) => a.sort_order - b.sort_order)
 
     for (const ef of formsForEvent) {
       const formDef = formDefMap.get(ef.form_id)

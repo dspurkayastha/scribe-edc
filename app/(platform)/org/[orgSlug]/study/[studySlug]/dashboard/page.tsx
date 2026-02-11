@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { requireAuth, getUserMemberships } from "@/lib/auth/session";
 import { getDashboardMetrics } from "@/server/actions/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +9,7 @@ export default async function DashboardPage({
 }: {
   params: Promise<{ orgSlug: string; studySlug: string }>;
 }) {
-  const { orgSlug, studySlug } = await params;
+  const { studySlug } = await params;
   const supabase = await createClient();
 
   const { data: study } = await supabase

@@ -17,7 +17,7 @@ export default async function FormFillPage({
     formSlug: string
   }>
 }) {
-  const { orgSlug, studySlug, participantId, formSlug } = await params
+  const { studySlug, participantId, formSlug } = await params
 
   const supabase = await createClient()
 

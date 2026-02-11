@@ -84,6 +84,7 @@ export function QueryDetailDialog({
   const [query, setQuery] = useState<(DataQueryRow & { responses: any[] }) | null>(null)
   const [loading, setLoading] = useState(false)
 
+  /* eslint-disable react-hooks/set-state-in-effect -- fetch on open is intentional */
   useEffect(() => {
     if (open && queryId) {
       setLoading(true)
@@ -98,6 +99,7 @@ export function QueryDetailDialog({
       setResponseText('')
     }
   }, [open, queryId, studyId])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleRespond() {
     if (!responseText.trim()) return

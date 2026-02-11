@@ -101,7 +101,7 @@ export function NotificationDropdown() {
   }, [])
 
   useEffect(() => {
-    fetchUnreadCount()
+    fetchUnreadCount() // eslint-disable-line react-hooks/set-state-in-effect -- initial fetch + polling is intentional
     const interval = setInterval(fetchUnreadCount, 60_000) // poll every 60s
     return () => clearInterval(interval)
   }, [fetchUnreadCount])

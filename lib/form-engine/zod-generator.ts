@@ -37,7 +37,7 @@ function buildFieldShapes(fields: Field[]): Record<string, z.ZodTypeAny> {
   for (const field of fields) {
     if (field.type === 'descriptive') continue
 
-    let schema: z.ZodTypeAny = buildFieldSchema(field)
+    const schema: z.ZodTypeAny = buildFieldSchema(field)
 
     // Apply required/optional
     if (field.required === true) {

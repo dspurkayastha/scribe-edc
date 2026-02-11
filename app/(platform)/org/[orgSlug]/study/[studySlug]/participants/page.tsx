@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
 import { SearchIcon, ChevronLeftIcon, ChevronRightIcon, UsersIcon } from 'lucide-react'
 import type { ParticipantStatus } from '@/types/database'
 

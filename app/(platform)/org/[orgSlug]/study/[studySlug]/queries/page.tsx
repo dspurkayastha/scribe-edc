@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -79,7 +78,7 @@ export default async function QueriesPage({
     .eq("study_id", study.id);
 
   for (const q of allQueries ?? []) {
-    const s = (q as any).status as string;
+    const s = q.status;
     if (s in counts) {
       counts[s as keyof typeof counts]++;
     }
@@ -106,7 +105,7 @@ export default async function QueriesPage({
         {userCanManage && (
           <CreateQueryDialog
             studyId={study.id}
-            participants={(participants ?? []).map((p: any) => ({
+            participants={(participants ?? []).map((p) => ({
               id: p.id,
               study_number: p.study_number,
             }))}

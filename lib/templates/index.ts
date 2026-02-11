@@ -1,9 +1,11 @@
-export { simpleRctTemplate } from './simple-rct'
-export { observationalTemplate } from './observational'
-export { singleArmTemplate } from './single-arm'
+import { simpleRctTemplate } from './simple-rct'
+import { observationalTemplate } from './observational'
+import { singleArmTemplate } from './single-arm'
+
+export { simpleRctTemplate, observationalTemplate, singleArmTemplate }
 
 export const studyTemplates = [
-  { id: 'simple-rct', ...require('./simple-rct').simpleRctTemplate },
-  { id: 'observational', ...require('./observational').observationalTemplate },
-  { id: 'single-arm', ...require('./single-arm').singleArmTemplate },
+  { id: 'simple-rct', ...simpleRctTemplate },
+  { id: 'observational', ...observationalTemplate },
+  { id: 'single-arm', ...singleArmTemplate },
 ]

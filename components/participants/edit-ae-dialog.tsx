@@ -79,6 +79,7 @@ export function EditAeDialog({ ae, studyId }: EditAeDialogProps) {
   const [saeCriteria, setSaeCriteria] = useState<string[]>(ae.sae_criteria ?? [])
 
   // Re-sync form state when the AE prop changes (e.g. after a refresh)
+  /* eslint-disable react-hooks/set-state-in-effect -- re-syncing all fields from updated prop */
   useEffect(() => {
     setDescription(ae.description)
     setOnsetDate(ae.onset_date)
@@ -89,6 +90,7 @@ export function EditAeDialog({ ae, studyId }: EditAeDialogProps) {
     setIsSae(ae.is_sae)
     setSaeCriteria(ae.sae_criteria ?? [])
   }, [ae])
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function resetForm() {
     setDescription(ae.description)

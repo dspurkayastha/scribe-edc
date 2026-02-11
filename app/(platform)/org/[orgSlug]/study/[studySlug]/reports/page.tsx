@@ -7,7 +7,7 @@ export default async function ReportsPage({
 }: {
   params: Promise<{ orgSlug: string; studySlug: string }>;
 }) {
-  const { orgSlug, studySlug } = await params;
+  const { studySlug } = await params;
   const supabase = await createClient();
 
   const { data: study } = await supabase

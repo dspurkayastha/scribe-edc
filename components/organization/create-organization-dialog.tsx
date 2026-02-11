@@ -48,7 +48,7 @@ export function CreateOrganizationDialog({ trigger }: CreateOrganizationDialogPr
   // Auto-generate slug from name unless the user has manually edited the slug
   useEffect(() => {
     if (!slugTouched) {
-      setSlug(slugify(name))
+      setSlug(slugify(name)) // eslint-disable-line react-hooks/set-state-in-effect -- derived slug from name
     }
   }, [name, slugTouched])
 

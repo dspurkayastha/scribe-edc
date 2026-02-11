@@ -18,6 +18,10 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { FormDefinitionRow } from "@/types/database";
+import { CreateFormDialog } from "@/components/form-builder/create-form-dialog";
+import { FormActionsMenu } from "@/components/form-builder/form-actions-menu";
+import { ImportCsvDialog } from "@/components/form-builder/import-csv-dialog";
+import { ExportCsvButton } from "@/components/form-builder/export-csv-button";
 
 export default async function FormDefinitionsPage({
   params,
@@ -62,16 +66,21 @@ export default async function FormDefinitionsPage({
           <span>/</span>
           <span>Forms</span>
         </div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Form Definitions
-        </h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          CRF form templates configured for this study. Form builder coming in
-          Phase 2.
-        </p>
-        <p className="text-muted-foreground text-xs mt-2 bg-muted px-3 py-2 rounded-md inline-block">
-          Use the Supabase dashboard or CLI to manage form definitions until the visual form builder is available.
-        </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight">
+              Form Definitions
+            </h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Create and manage CRF form templates for this study.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <ExportCsvButton studyId={study.id} />
+            <ImportCsvDialog studyId={study.id} />
+            <CreateFormDialog studyId={study.id} basePath={basePath} />
+          </div>
+        </div>
       </div>
 
       <Card>
@@ -86,8 +95,7 @@ export default async function FormDefinitionsPage({
             <div className="text-center py-12 text-muted-foreground">
               <p className="text-sm">No forms have been defined yet.</p>
               <p className="text-xs mt-1">
-                Form definitions will be created using the form builder in a
-                future release.
+                Click &quot;Create Form&quot; to get started.
               </p>
             </div>
           ) : (
@@ -97,15 +105,22 @@ export default async function FormDefinitionsPage({
                   <TableHead>Title</TableHead>
                   <TableHead>Slug</TableHead>
                   <TableHead className="text-center">Version</TableHead>
-                  <TableHead className="text-center">Active</TableHead>
-                  <TableHead className="text-center">Locked</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
                   <TableHead>Last Updated</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {formRows.map((form) => (
                   <TableRow key={form.id}>
-                    <TableCell className="font-medium">{form.title}</TableCell>
+                    <TableCell className="font-medium">
+                      <Link
+                        href={`${basePath}/settings/forms/${form.slug}/edit`}
+                        className="hover:underline"
+                      >
+                        {form.title}
+                      </Link>
+                    </TableCell>
                     <TableCell className="font-mono text-muted-foreground text-xs">
                       {form.slug}
                     </TableCell>
@@ -113,28 +128,26 @@ export default async function FormDefinitionsPage({
                       v{form.version}
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={
-                          form.is_active
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
-                        }
-                      >
-                        {form.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={
-                          form.is_locked
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-gray-100 text-gray-600"
-                        }
-                      >
-                        {form.is_locked ? "Locked" : "Unlocked"}
-                      </Badge>
+                      <div className="flex items-center justify-center gap-1">
+                        <Badge
+                          variant="outline"
+                          className={
+                            form.is_active
+                              ? "bg-green-100 text-green-800"
+                              : "bg-gray-100 text-gray-600"
+                          }
+                        >
+                          {form.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                        {form.is_locked && (
+                          <Badge
+                            variant="outline"
+                            className="bg-amber-100 text-amber-800"
+                          >
+                            Locked
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-muted-foreground">
                       {new Date(form.updated_at).toLocaleDateString("en-US", {
@@ -142,6 +155,13 @@ export default async function FormDefinitionsPage({
                         month: "short",
                         day: "numeric",
                       })}
+                    </TableCell>
+                    <TableCell>
+                      <FormActionsMenu
+                        form={form}
+                        studyId={study.id}
+                        basePath={basePath}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

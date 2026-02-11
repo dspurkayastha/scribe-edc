@@ -6,10 +6,11 @@ import { canManageQueries, canEditData } from '@/lib/auth/permissions'
 import type { ServerActionResult } from '@/types/app'
 import type { DataQueryRow, QueryResponseRow, QueryPriority } from '@/types/database'
 import { z } from 'zod'
+import { zUUID } from '@/lib/validation'
 
 const createQuerySchema = z.object({
-  participantId: z.string().uuid(),
-  formResponseId: z.string().uuid().optional(),
+  participantId: zUUID,
+  formResponseId: zUUID.optional(),
   fieldId: z.string().optional(),
   queryText: z.string().min(1).max(2000),
   priority: z.enum(['low', 'normal', 'high', 'critical']),
@@ -27,7 +28,9 @@ export async function createQuery(
 
   const parsed = createQuerySchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    const fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[]>
+    const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+    return { success: false, error: details || 'Invalid input', fieldErrors }
   }
 
   const supabase = await createClient()

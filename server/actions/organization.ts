@@ -18,7 +18,9 @@ export async function createOrganization(
   const parsed = createOrgSchema.safeParse(input)
 
   if (!parsed.success) {
-    return { success: false, error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    const fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[]>
+    const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+    return { success: false, error: details || 'Invalid input', fieldErrors }
   }
 
   const supabase = await createClient()
@@ -47,14 +49,4 @@ export async function getOrganization(slug: string): Promise<OrganizationRow | n
     .single()
 
   return data as OrganizationRow | null
-}
-
-export async function listOrganizations(): Promise<OrganizationRow[]> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('organizations')
-    .select('*')
-    .order('name')
-
-  return (data ?? []) as OrganizationRow[]
 }

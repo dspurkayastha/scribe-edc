@@ -6,9 +6,10 @@ import { canEditStudyConfig, canManageUsers } from '@/lib/auth/permissions'
 import type { ServerActionResult } from '@/types/app'
 import type { StudyRow, StudyArmRow, StudySiteRow, StudyEventRow, StudyMemberRow } from '@/types/database'
 import { z } from 'zod'
+import { zUUID } from '@/lib/validation'
 
 const createStudySchema = z.object({
-  organizationId: z.string().uuid(),
+  organizationId: zUUID,
   name: z.string().min(2).max(200),
   shortName: z.string().min(1).max(50),
   slug: z.string().regex(/^[a-z0-9-]+$/).min(2).max(50),
@@ -28,7 +29,9 @@ export async function createStudy(
   const parsed = createStudySchema.safeParse(input)
 
   if (!parsed.success) {
-    return { success: false, error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    const fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[]>
+    const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+    return { success: false, error: details || 'Invalid input', fieldErrors }
   }
 
   const supabase = await createClient()
@@ -82,31 +85,6 @@ export async function getStudy(orgSlug: string, studySlug: string): Promise<Stud
     .single()
 
   return data as StudyRow | null
-}
-
-export async function getStudyById(studyId: string): Promise<StudyRow | null> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('studies')
-    .select('*')
-    .eq('id', studyId)
-    .single()
-
-  return data as StudyRow | null
-}
-
-export async function updateStudySettings(
-  studyId: string,
-  settings: Record<string, unknown>
-): Promise<ServerActionResult> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('studies')
-    .update({ settings })
-    .eq('id', studyId)
-
-  if (error) return { success: false, error: error.message }
-  return { success: true, data: undefined }
 }
 
 export async function listStudies(): Promise<Array<StudyRow & { organization: { slug: string; name: string } }>> {

@@ -445,3 +445,22 @@ export type ParticipantUpdate = Partial<Omit<ParticipantRow, 'id' | 'created_at'
 export type FormResponseUpdate = Partial<
   Omit<FormResponseRow, 'id' | 'created_at' | 'study_id' | 'participant_id' | 'form_id'>
 >
+
+export type FormDefinitionInsert = Omit<
+  FormDefinitionRow,
+  'id' | 'created_at' | 'updated_at' | 'locked_by' | 'locked_at'
+> & {
+  id?: string
+  locked_by?: string | null
+  locked_at?: string | null
+}
+
+export type FormDefinitionUpdate = Partial<
+  Omit<FormDefinitionRow, 'id' | 'created_at' | 'study_id' | 'slug'>
+>
+
+export type OptionListInsert = Omit<OptionListRow, 'id' | 'created_at' | 'updated_at'> & {
+  id?: string
+}
+
+export type OptionListUpdate = Partial<Omit<OptionListRow, 'id' | 'created_at'>>

@@ -6,10 +6,11 @@ import { canEditData, canDeleteParticipants } from '@/lib/auth/permissions'
 import type { ServerActionResult, PaginatedResult } from '@/types/app'
 import type { ParticipantRow } from '@/types/database'
 import { z } from 'zod'
+import { zUUID } from '@/lib/validation'
 
 const createParticipantSchema = z.object({
-  studyId: z.string().uuid(),
-  siteId: z.string().uuid().optional(),
+  studyId: zUUID,
+  siteId: zUUID.optional(),
 })
 
 export async function createParticipant(

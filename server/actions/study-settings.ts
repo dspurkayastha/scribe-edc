@@ -32,11 +32,9 @@ export async function updateStudyDetails(
 
   const parsed = updateStudyDetailsSchema.safeParse(input)
   if (!parsed.success) {
-    return {
-      success: false,
-      error: 'Invalid input',
-      fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]>,
-    }
+    const fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[]>
+    const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+    return { success: false, error: details || 'Invalid input', fieldErrors }
   }
 
   const supabase = await createClient()

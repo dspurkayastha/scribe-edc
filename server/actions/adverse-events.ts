@@ -6,9 +6,10 @@ import { canEditData, canAcknowledgeSAE } from '@/lib/auth/permissions'
 import type { ServerActionResult, PaginatedResult } from '@/types/app'
 import type { AdverseEventRow, AeSeverity, AeRelatedness, AeOutcome } from '@/types/database'
 import { z } from 'zod'
+import { zUUID } from '@/lib/validation'
 
 const createAeSchema = z.object({
-  participantId: z.string().uuid(),
+  participantId: zUUID,
   description: z.string().min(1).max(5000),
   onsetDate: z.string().min(1),
   severity: z.enum(['mild', 'moderate', 'severe']),
@@ -30,7 +31,9 @@ export async function createAdverseEvent(
 
   const parsed = createAeSchema.safeParse(input)
   if (!parsed.success) {
-    return { success: false, error: 'Invalid input', fieldErrors: parsed.error.flatten().fieldErrors as Record<string, string[]> }
+    const fieldErrors = parsed.error.flatten().fieldErrors as Record<string, string[]>
+    const details = Object.entries(fieldErrors).map(([k, v]) => `${k}: ${v.join(', ')}`).join('; ')
+    return { success: false, error: details || 'Invalid input', fieldErrors }
   }
 
   const supabase = await createClient()

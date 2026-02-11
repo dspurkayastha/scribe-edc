@@ -100,7 +100,7 @@ describe('createStudy', () => {
 
     expect(result.success).toBe(false)
     if (!result.success) {
-      expect(result.error).toContain('Invalid input')
+      expect(result.error).toBeTruthy()
       expect(result.fieldErrors).toBeDefined()
     }
   })

@@ -19,6 +19,8 @@ import {
   CalendarDays,
   GitBranch,
   Users,
+  Clock,
+  ShieldCheck,
 } from "lucide-react";
 
 const STUDY_TYPE_LABELS: Record<string, string> = {
@@ -58,7 +60,18 @@ const PHASE_LABELS: Record<string, string> = {
   not_applicable: "Not Applicable",
 };
 
-const subPages = [
+const PERIOD_STUDY_TYPES = new Set(["crossover_rct", "factorial"]);
+
+interface SubPage {
+  title: string;
+  description: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  /** If set, only show for these study types */
+  studyTypes?: Set<string>;
+}
+
+const subPages: SubPage[] = [
   {
     title: "Forms",
     description: "Manage CRF form definitions and versions",
@@ -82,6 +95,19 @@ const subPages = [
     description: "Team members, roles, and site assignments",
     href: "settings/users",
     icon: Users,
+  },
+  {
+    title: "Periods",
+    description: "Study periods for crossover and multi-phase designs",
+    href: "settings/periods",
+    icon: Clock,
+    studyTypes: PERIOD_STUDY_TYPES,
+  },
+  {
+    title: "Eligibility Criteria",
+    description: "Inclusion and exclusion criteria for enrollment",
+    href: "settings/eligibility",
+    icon: ShieldCheck,
   },
 ];
 
@@ -220,7 +246,7 @@ export default async function SettingsPage({
 
       {/* Navigation Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {subPages.map((page) => (
+        {subPages.filter((page) => !page.studyTypes || page.studyTypes.has(s.study_type)).map((page) => (
           <Link key={page.href} href={`${basePath}/${page.href}`}>
             <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full">
               <CardHeader>

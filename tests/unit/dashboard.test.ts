@@ -37,7 +37,7 @@ beforeEach(() => {
  */
 function createThenableChain(result: any) {
   const chain: any = {}
-  for (const method of ['select', 'eq', 'is', 'order', 'single']) {
+  for (const method of ['select', 'eq', 'is', 'in', 'not', 'order', 'single']) {
     chain[method] = vi.fn((..._args: any[]) => chain)
   }
   // Make it thenable so `await chain` and `Promise.all([chain])` work

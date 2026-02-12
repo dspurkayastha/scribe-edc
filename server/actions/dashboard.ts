@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { requireStudyAccess } from '@/lib/auth/session'
+import { getOverdueVisits } from '@/server/actions/overdue'
 import type { DashboardMetric } from '@/types/app'
 
 export interface DashboardData {
@@ -10,6 +11,7 @@ export interface DashboardData {
   siteEnrollment: Array<{ name: string; count: number }>
   openQueries: DashboardMetric
   saeAlerts: DashboardMetric
+  overdueVisits: DashboardMetric
   formCompleteness: DashboardMetric
   formStatusBreakdown: Array<{ status: string; count: number }>
 }
@@ -68,6 +70,10 @@ export async function getDashboardMetrics(studyId: string): Promise<DashboardDat
   const completedResponses = (statusCounts['complete'] ?? 0) + (statusCounts['verified'] ?? 0) +
     (statusCounts['locked'] ?? 0) + (statusCounts['signed'] ?? 0)
 
+  // Overdue visits count
+  const overdueVisitsList = await getOverdueVisits(studyId)
+  const overdueCount = overdueVisitsList.length
+
   return {
     enrollment: {
       label: 'Enrollment',
@@ -84,6 +90,10 @@ export async function getDashboardMetrics(studyId: string): Promise<DashboardDat
     saeAlerts: {
       label: 'Unacknowledged SAEs',
       value: saeResult.count ?? 0,
+    },
+    overdueVisits: {
+      label: 'Overdue Visits',
+      value: overdueCount,
     },
     formCompleteness: {
       label: 'Form Completeness',

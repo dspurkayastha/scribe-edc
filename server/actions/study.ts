@@ -4,7 +4,10 @@ import { createClient } from '@/lib/supabase/server'
 import { requireAuth, requireStudyAccess } from '@/lib/auth/session'
 import { canEditStudyConfig, canManageUsers } from '@/lib/auth/permissions'
 import type { ServerActionResult } from '@/types/app'
-import type { StudyRow, StudyArmRow, StudySiteRow, StudyEventRow, StudyMemberRow } from '@/types/database'
+import type {
+  StudyRow, StudyArmRow, StudySiteRow, StudyEventRow, StudyMemberRow,
+  EventFormRow, StudyPeriodRow, EligibilityCriteriaRow,
+} from '@/types/database'
 import { z } from 'zod'
 import { zUUID } from '@/lib/validation'
 
@@ -217,6 +220,11 @@ export async function createStudyEvent(
     window_before?: number
     window_after?: number
     sort_order: number
+    arm_id?: string | null
+    period_id?: string | null
+    anchor?: StudyEventRow['anchor']
+    anchor_event_id?: string | null
+    max_repeats?: number | null
   }
 ): Promise<ServerActionResult<StudyEventRow>> {
   const { role } = await requireStudyAccess(studyId)
@@ -236,6 +244,11 @@ export async function createStudyEvent(
       window_before: input.window_before ?? 0,
       window_after: input.window_after ?? 0,
       sort_order: input.sort_order,
+      arm_id: input.arm_id ?? null,
+      period_id: input.period_id ?? null,
+      anchor: input.anchor ?? 'enrollment',
+      anchor_event_id: input.anchor_event_id ?? null,
+      max_repeats: input.max_repeats ?? null,
     })
     .select()
     .single()
@@ -255,6 +268,12 @@ export async function updateStudyEvent(
     window_before?: number
     window_after?: number
     is_active?: boolean
+    arm_id?: string | null
+    period_id?: string | null
+    anchor?: StudyEventRow['anchor']
+    anchor_event_id?: string | null
+    max_repeats?: number | null
+    sort_order?: number
   }
 ): Promise<ServerActionResult<StudyEventRow>> {
   const { role } = await requireStudyAccess(studyId)
@@ -271,6 +290,12 @@ export async function updateStudyEvent(
   if (input.window_before !== undefined) updateData.window_before = input.window_before
   if (input.window_after !== undefined) updateData.window_after = input.window_after
   if (input.is_active !== undefined) updateData.is_active = input.is_active
+  if (input.arm_id !== undefined) updateData.arm_id = input.arm_id
+  if (input.period_id !== undefined) updateData.period_id = input.period_id
+  if (input.anchor !== undefined) updateData.anchor = input.anchor
+  if (input.anchor_event_id !== undefined) updateData.anchor_event_id = input.anchor_event_id
+  if (input.max_repeats !== undefined) updateData.max_repeats = input.max_repeats
+  if (input.sort_order !== undefined) updateData.sort_order = input.sort_order
 
   const { data, error } = await supabase
     .from('study_events')
@@ -282,6 +307,259 @@ export async function updateStudyEvent(
 
   if (error) return { success: false, error: error.message }
   return { success: true, data: data as StudyEventRow }
+}
+
+// ─── Event Forms (event-form matrix) ───
+
+export async function createEventForm(
+  studyId: string,
+  input: { eventId: string; formId: string; isRequired?: boolean; sortOrder?: number }
+): Promise<ServerActionResult<EventFormRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const parsed = z.object({
+    eventId: zUUID,
+    formId: zUUID,
+    isRequired: z.boolean().optional(),
+    sortOrder: z.number().int().min(0).optional(),
+  }).safeParse(input)
+
+  if (!parsed.success) {
+    return { success: false, error: 'Invalid input' }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('event_forms')
+    .insert({
+      event_id: parsed.data.eventId,
+      form_id: parsed.data.formId,
+      is_required: parsed.data.isRequired ?? true,
+      sort_order: parsed.data.sortOrder ?? 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'This form is already assigned to this event' }
+    }
+    return { success: false, error: error.message }
+  }
+  return { success: true, data: data as EventFormRow }
+}
+
+export async function updateEventForm(
+  studyId: string,
+  eventFormId: string,
+  input: { isRequired?: boolean; sortOrder?: number }
+): Promise<ServerActionResult<EventFormRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const updateData: Record<string, unknown> = {}
+  if (input.isRequired !== undefined) updateData.is_required = input.isRequired
+  if (input.sortOrder !== undefined) updateData.sort_order = input.sortOrder
+
+  const { data, error } = await supabase
+    .from('event_forms')
+    .update(updateData)
+    .eq('id', eventFormId)
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as EventFormRow }
+}
+
+export async function deleteEventForm(
+  studyId: string,
+  eventFormId: string
+): Promise<ServerActionResult> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('event_forms')
+    .delete()
+    .eq('id', eventFormId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: undefined }
+}
+
+// ─── Study Periods ───
+
+export async function createStudyPeriod(
+  studyId: string,
+  input: {
+    name: string
+    label: string
+    periodType: StudyPeriodRow['period_type']
+    durationDays?: number | null
+    sortOrder?: number
+  }
+): Promise<ServerActionResult<StudyPeriodRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('study_periods')
+    .insert({
+      study_id: studyId,
+      name: input.name,
+      label: input.label,
+      period_type: input.periodType,
+      duration_days: input.durationDays ?? null,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    if (error.code === '23505') {
+      return { success: false, error: 'A period with this name already exists' }
+    }
+    return { success: false, error: error.message }
+  }
+  return { success: true, data: data as StudyPeriodRow }
+}
+
+export async function updateStudyPeriod(
+  periodId: string,
+  studyId: string,
+  input: {
+    name?: string
+    label?: string
+    periodType?: StudyPeriodRow['period_type']
+    durationDays?: number | null
+    sortOrder?: number
+    isActive?: boolean
+  }
+): Promise<ServerActionResult<StudyPeriodRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const updateData: Record<string, unknown> = {}
+  if (input.name !== undefined) updateData.name = input.name
+  if (input.label !== undefined) updateData.label = input.label
+  if (input.periodType !== undefined) updateData.period_type = input.periodType
+  if (input.durationDays !== undefined) updateData.duration_days = input.durationDays
+  if (input.sortOrder !== undefined) updateData.sort_order = input.sortOrder
+  if (input.isActive !== undefined) updateData.is_active = input.isActive
+
+  const { data, error } = await supabase
+    .from('study_periods')
+    .update(updateData)
+    .eq('id', periodId)
+    .eq('study_id', studyId)
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as StudyPeriodRow }
+}
+
+// ─── Eligibility Criteria ───
+
+export async function createEligibilityCriteria(
+  studyId: string,
+  input: {
+    label: string
+    rule: string
+    type: EligibilityCriteriaRow['type']
+    sortOrder?: number
+  }
+): Promise<ServerActionResult<EligibilityCriteriaRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('eligibility_criteria')
+    .insert({
+      study_id: studyId,
+      label: input.label,
+      rule: input.rule,
+      type: input.type,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as EligibilityCriteriaRow }
+}
+
+export async function updateEligibilityCriteria(
+  criteriaId: string,
+  studyId: string,
+  input: {
+    label?: string
+    rule?: string
+    type?: EligibilityCriteriaRow['type']
+    sortOrder?: number
+  }
+): Promise<ServerActionResult<EligibilityCriteriaRow>> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const updateData: Record<string, unknown> = {}
+  if (input.label !== undefined) updateData.label = input.label
+  if (input.rule !== undefined) updateData.rule = input.rule
+  if (input.type !== undefined) updateData.type = input.type
+  if (input.sortOrder !== undefined) updateData.sort_order = input.sortOrder
+
+  const { data, error } = await supabase
+    .from('eligibility_criteria')
+    .update(updateData)
+    .eq('id', criteriaId)
+    .eq('study_id', studyId)
+    .select()
+    .single()
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: data as EligibilityCriteriaRow }
+}
+
+export async function deleteEligibilityCriteria(
+  criteriaId: string,
+  studyId: string
+): Promise<ServerActionResult> {
+  const { role } = await requireStudyAccess(studyId)
+  if (!canEditStudyConfig(role)) {
+    return { success: false, error: 'You do not have permission to edit study configuration' }
+  }
+
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('eligibility_criteria')
+    .delete()
+    .eq('id', criteriaId)
+    .eq('study_id', studyId)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true, data: undefined }
 }
 
 // ─── Study Members ───

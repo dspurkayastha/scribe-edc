@@ -12,6 +12,9 @@ import { RandomizeDialog, AllocationDisplay } from '@/components/participants/ra
 import { ReportAeDialog } from '@/components/participants/report-ae-dialog'
 import { AeList } from '@/components/participants/ae-list'
 import { DeleteParticipantDialog } from '@/components/participants/delete-participant-dialog'
+import { AddEventInstanceDialog } from '@/components/participants/add-event-instance-dialog'
+import { VisitTimeline } from '@/components/participants/visit-timeline'
+import { buildParticipantTimeline } from '@/lib/visit-scheduling'
 import { RecordHistoryPanel } from '@/components/audit/record-history-panel'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -104,7 +107,11 @@ export default async function ParticipantDetailPage({
       name,
       label,
       event_type,
-      sort_order
+      day_offset,
+      window_before,
+      window_after,
+      sort_order,
+      max_repeats
     `)
     .eq('study_id', study.id)
     .eq('is_active', true)
@@ -145,23 +152,33 @@ export default async function ParticipantDetailPage({
     }
   }
 
-  // Build a map of form responses keyed by `${form_id}__${event_id}`
+  // Build a map of form responses keyed by `${form_id}__${event_id}__${instance_number}`
   const responseMap = new Map<string, typeof formResponses[number]>()
   for (const resp of formResponses) {
-    const key = `${resp.form_id}__${resp.event_id ?? 'none'}`
-    // Keep the most recent response per form+event combo
+    const key = `${resp.form_id}__${resp.event_id ?? 'none'}__${resp.instance_number}`
     if (!responseMap.has(key)) {
       responseMap.set(key, resp)
     }
   }
 
-  // Build the schedule: events -> forms (with response status)
+  // Track instance numbers per event from responses
+  const eventInstanceMap = new Map<string, Set<number>>()
+  for (const resp of formResponses) {
+    if (!resp.event_id) continue
+    if (!eventInstanceMap.has(resp.event_id)) {
+      eventInstanceMap.set(resp.event_id, new Set())
+    }
+    eventInstanceMap.get(resp.event_id)!.add(resp.instance_number)
+  }
+
+  // Build the schedule: events -> forms (with response status), including instances
   type ScheduleForm = {
     formId: string
     formSlug: string
     formTitle: string
     eventId: string
     eventName: string
+    instanceNumber: number
     isRequired: boolean
     responseStatus: FormResponseStatus | 'not_started'
     responseId: string | null
@@ -175,31 +192,60 @@ export default async function ParticipantDetailPage({
       .filter((ef) => ef.event_id === event.id)
       .sort((a, b) => a.sort_order - b.sort_order)
 
-    for (const ef of formsForEvent) {
-      const formDef = formDefMap.get(ef.form_id)
-      if (!formDef || !formDef.is_active) continue
+    // Determine which instances exist for repeating/unscheduled events
+    const isRepeatable = event.event_type === 'repeating' || event.event_type === 'unscheduled'
+    const instances = isRepeatable
+      ? [...(eventInstanceMap.get(event.id) ?? new Set([1]))].sort((a, b) => a - b)
+      : [1]
 
-      const key = `${ef.form_id}__${event.id}`
-      const response = responseMap.get(key)
+    // Ensure at least instance 1 for repeating events
+    if (isRepeatable && instances.length === 0) {
+      instances.push(1)
+    }
 
-      schedule.push({
-        formId: ef.form_id,
-        formSlug: formDef.slug,
-        formTitle: formDef.title,
-        eventId: event.id,
-        eventName: event.label || event.name,
-        isRequired: ef.is_required,
-        responseStatus: response?.status ?? 'not_started',
-        responseId: response?.id ?? null,
-        lastUpdated: response?.updated_at ?? null,
-      })
+    for (const instanceNum of instances) {
+      for (const ef of formsForEvent) {
+        const formDef = formDefMap.get(ef.form_id)
+        if (!formDef || !formDef.is_active) continue
+
+        const key = `${ef.form_id}__${event.id}__${instanceNum}`
+        const response = responseMap.get(key)
+
+        const instanceLabel = instances.length > 1
+          ? `${event.label || event.name} #${instanceNum}`
+          : event.label || event.name
+
+        schedule.push({
+          formId: ef.form_id,
+          formSlug: formDef.slug,
+          formTitle: formDef.title,
+          eventId: event.id,
+          eventName: instanceLabel,
+          instanceNumber: instanceNum,
+          isRequired: ef.is_required,
+          responseStatus: response?.status ?? 'not_started',
+          responseId: response?.id ?? null,
+          lastUpdated: response?.updated_at ?? null,
+        })
+      }
     }
   }
 
+  // Build instance counts per event for the add-instance dialog
+  const instanceCounts: Record<string, number> = {}
+  for (const [eventId, instances] of eventInstanceMap) {
+    instanceCounts[eventId] = instances.size
+  }
+
+  // Identify repeatable events for the add-instance dialog
+  const repeatableEvents = (studyEvents ?? []).filter(
+    (e) => e.event_type === 'repeating' || e.event_type === 'unscheduled'
+  ) as import('@/types/database').StudyEventRow[]
+
   // Identify unscheduled responses (responses not tied to any event_forms entry)
-  const scheduledKeys = new Set(schedule.map((s) => `${s.formId}__${s.eventId}`))
+  const scheduledKeys = new Set(schedule.map((s) => `${s.formId}__${s.eventId}__${s.instanceNumber}`))
   const unscheduledResponses = formResponses.filter((r) => {
-    const key = `${r.form_id}__${r.event_id ?? 'none'}`
+    const key = `${r.form_id}__${r.event_id ?? 'none'}__${r.instance_number}`
     return !scheduledKeys.has(key)
   })
 
@@ -335,13 +381,65 @@ export default async function ParticipantDetailPage({
         </Card>
       </div>
 
+      {/* Visit Timeline */}
+      {(() => {
+        const timelineEvents = (studyEvents ?? []).map((e: any) => ({
+          id: e.id,
+          name: e.name,
+          label: e.label,
+          event_type: e.event_type,
+          day_offset: e.day_offset ?? null,
+          window_before: e.window_before ?? 0,
+          window_after: e.window_after ?? 0,
+          sort_order: e.sort_order,
+        }))
+        const timelineEventForms = eventForms.map((ef) => ({
+          event_id: ef.event_id,
+          form_id: ef.form_id,
+        }))
+        const timelineResponses = formResponses.map((r) => ({
+          event_id: r.event_id,
+          form_id: r.form_id,
+          instance_number: r.instance_number,
+          status: r.status,
+        }))
+        const timeline = buildParticipantTimeline(
+          timelineEvents,
+          timelineEventForms,
+          timelineResponses,
+          participant.enrolled_at,
+        )
+        if (timeline.length === 0) return null
+        return (
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Visit Timeline</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <VisitTimeline timeline={timeline} />
+            </CardContent>
+          </Card>
+        )
+      })()}
+
       {/* Forms schedule table */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <ClipboardListIcon className="h-5 w-5" />
-            Forms
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-2">
+              <ClipboardListIcon className="h-5 w-5" />
+              Forms
+            </CardTitle>
+            {repeatableEvents.length > 0 && userCanEditData && (
+              <AddEventInstanceDialog
+                participantId={participant.id}
+                studyId={study.id}
+                eligibleEvents={repeatableEvents}
+                instanceCounts={instanceCounts}
+                basePath={basePath}
+              />
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           {schedule.length === 0 && unscheduledResponses.length === 0 ? (
@@ -370,10 +468,10 @@ export default async function ParticipantDetailPage({
                     ? { label: 'Not Started', color: 'bg-muted text-muted-foreground' }
                     : FORM_STATUS_CONFIG[item.responseStatus]
 
-                  const formUrl = `${basePath}/participants/${participant.id}/forms/${item.formSlug}?eventId=${item.eventId}`
+                  const formUrl = `${basePath}/participants/${participant.id}/forms/${item.formSlug}?eventId=${item.eventId}${item.instanceNumber > 1 ? `&instanceNumber=${item.instanceNumber}` : ''}`
 
                   return (
-                    <TableRow key={`${item.formId}-${item.eventId}`}>
+                    <TableRow key={`${item.formId}-${item.eventId}-${item.instanceNumber}`}>
                       <TableCell className="font-medium">{item.formTitle}</TableCell>
                       <TableCell className="text-muted-foreground">{item.eventName}</TableCell>
                       <TableCell>

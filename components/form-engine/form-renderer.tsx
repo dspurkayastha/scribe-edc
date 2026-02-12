@@ -7,6 +7,7 @@ import type { FormResponseStatus } from '@/types/database'
 import { generateZodSchema } from '@/lib/form-engine/zod-generator'
 import { FormPage } from './form-page'
 import { useFormPagination } from './hooks/use-form-pagination'
+import { CrossFormProvider } from './cross-form-context'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -22,6 +23,8 @@ interface FormRendererProps {
   studyId?: string
   /** Required for file upload fields — the participant ID for storage pathing */
   participantId?: string
+  /** Cross-form data for expression evaluation (e.g. {demographics: {age: 45}}) */
+  crossFormData?: Record<string, Record<string, unknown>>
 }
 
 export function FormRenderer({
@@ -33,6 +36,7 @@ export function FormRenderer({
   readOnly = false,
   studyId,
   participantId,
+  crossFormData,
 }: FormRendererProps) {
   const zodSchema = generateZodSchema(schema)
 
@@ -62,59 +66,61 @@ export function FormRenderer({
   }
 
   return (
-    <FormProvider {...form}>
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Status bar */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Badge variant="outline" className={statusColors[status]}>
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </Badge>
-            {pagination.totalPages > 1 && (
-              <span className="text-sm text-muted-foreground">
-                Page {pagination.currentPage + 1} of {pagination.totalPages}
-              </span>
-            )}
-          </div>
-        </div>
-
-        {/* Current page */}
-        <FormPage
-          page={pagination.currentPageData}
-          readOnly={readOnly}
-          studyId={studyId}
-          participantId={participantId}
-        />
-
-        {/* Navigation + actions */}
-        <div className="flex items-center justify-between border-t pt-4">
-          <div className="flex gap-2">
-            {!pagination.isFirstPage && (
-              <Button type="button" variant="outline" onClick={pagination.goToPrevPage}>
-                Previous
-              </Button>
-            )}
-            {!pagination.isLastPage && (
-              <Button type="button" variant="outline" onClick={pagination.goToNextPage}>
-                Next
-              </Button>
-            )}
-          </div>
-
-          {!readOnly && (
-            <div className="flex gap-2">
-              {onSaveDraft && (
-                <Button type="button" variant="outline" onClick={handleSaveDraft}>
-                  Save Draft
-                </Button>
-              )}
-              {pagination.isLastPage && onSubmit && (
-                <Button type="submit">Submit</Button>
+    <CrossFormProvider value={crossFormData}>
+      <FormProvider {...form}>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Status bar */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className={statusColors[status]}>
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </Badge>
+              {pagination.totalPages > 1 && (
+                <span className="text-sm text-muted-foreground">
+                  Page {pagination.currentPage + 1} of {pagination.totalPages}
+                </span>
               )}
             </div>
-          )}
-        </div>
-      </form>
-    </FormProvider>
+          </div>
+
+          {/* Current page */}
+          <FormPage
+            page={pagination.currentPageData}
+            readOnly={readOnly}
+            studyId={studyId}
+            participantId={participantId}
+          />
+
+          {/* Navigation + actions */}
+          <div className="flex items-center justify-between border-t pt-4">
+            <div className="flex gap-2">
+              {!pagination.isFirstPage && (
+                <Button type="button" variant="outline" onClick={pagination.goToPrevPage}>
+                  Previous
+                </Button>
+              )}
+              {!pagination.isLastPage && (
+                <Button type="button" variant="outline" onClick={pagination.goToNextPage}>
+                  Next
+                </Button>
+              )}
+            </div>
+
+            {!readOnly && (
+              <div className="flex gap-2">
+                {onSaveDraft && (
+                  <Button type="button" variant="outline" onClick={handleSaveDraft}>
+                    Save Draft
+                  </Button>
+                )}
+                {pagination.isLastPage && onSubmit && (
+                  <Button type="submit">Submit</Button>
+                )}
+              </div>
+            )}
+          </div>
+        </form>
+      </FormProvider>
+    </CrossFormProvider>
   )
 }

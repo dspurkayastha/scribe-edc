@@ -147,6 +147,7 @@ export interface StudyPeriodRow {
   period_type: PeriodType
   duration_days: number | null
   sort_order: number
+  is_active: boolean
   created_at: string
 }
 

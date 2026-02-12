@@ -45,6 +45,9 @@ interface FormFillWrapperProps {
   studyId: string
   signatures: SignatureRow[]
   userRole: MemberRole
+  eventId?: string
+  instanceNumber?: number
+  crossFormData?: Record<string, Record<string, unknown>>
 }
 
 // ---------------------------------------------------------------------------
@@ -58,6 +61,9 @@ export function FormFillWrapper({
   studyId,
   signatures,
   userRole,
+  eventId,
+  instanceNumber,
+  crossFormData,
 }: FormFillWrapperProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -95,6 +101,8 @@ export function FormFillWrapper({
         participantId,
         formId: formDefinition.id,
         formVersion: formDefinition.version,
+        eventId,
+        instanceNumber,
         data,
       })
 
@@ -115,6 +123,8 @@ export function FormFillWrapper({
         participantId,
         formId: formDefinition.id,
         formVersion: formDefinition.version,
+        eventId,
+        instanceNumber,
         data,
       })
 
@@ -252,6 +262,7 @@ export function FormFillWrapper({
         onSaveDraft={!isReadOnly ? handleSaveDraft : undefined}
         onSubmit={!isReadOnly && status === 'draft' ? handleSubmit : undefined}
         readOnly={isReadOnly}
+        crossFormData={crossFormData}
       />
 
       {/* Workflow action buttons */}

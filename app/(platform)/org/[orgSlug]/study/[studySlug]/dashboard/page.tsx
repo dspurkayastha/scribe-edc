@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getDashboardMetrics } from "@/server/actions/dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -9,7 +10,7 @@ export default async function DashboardPage({
 }: {
   params: Promise<{ orgSlug: string; studySlug: string }>;
 }) {
-  const { studySlug } = await params;
+  const { orgSlug, studySlug } = await params;
   const supabase = await createClient();
 
   const { data: study } = await supabase
@@ -55,7 +56,7 @@ export default async function DashboardPage({
       </div>
 
       {/* Top metric cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Enrollment */}
         <Card>
           <CardHeader className="pb-2">
@@ -122,6 +123,27 @@ export default async function DashboardPage({
             </p>
           </CardContent>
         </Card>
+
+        {/* Overdue Visits */}
+        <Link href={`/org/${orgSlug}/study/${studySlug}/dashboard/overdue`}>
+          <Card className="hover:border-primary/50 hover:shadow-md transition-all cursor-pointer h-full">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Overdue Visits
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-3xl font-bold ${(metrics.overdueVisits.value as number) > 0 ? "text-orange-600" : ""}`}>
+                {metrics.overdueVisits.value}
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                {(metrics.overdueVisits.value as number) > 0
+                  ? "past window"
+                  : "all on schedule"}
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
 
         {/* Form Completeness */}
         <Card>

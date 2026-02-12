@@ -4,11 +4,15 @@ import { requireStudyAccess } from '@/lib/auth/session'
 import { canViewAuditTrail } from '@/lib/auth/permissions'
 import { getFormDefinitionBySlug, getFormResponse } from '@/server/actions/forms'
 import { getFormSignatures } from '@/server/actions/signatures'
+import { getCrossFormData } from '@/server/actions/cross-form-data'
+import { extractFieldRefs } from '@/lib/form-engine/expression-engine'
 import { FormFillWrapper } from '@/components/form-engine/form-fill-wrapper'
 import { RecordHistoryPanel } from '@/components/audit/record-history-panel'
+import type { Rule } from '@/types/form-schema'
 
 export default async function FormFillPage({
   params,
+  searchParams,
 }: {
   params: Promise<{
     orgSlug: string
@@ -16,8 +20,11 @@ export default async function FormFillPage({
     participantId: string
     formSlug: string
   }>
+  searchParams: Promise<{ eventId?: string; instanceNumber?: string }>
 }) {
   const { studySlug, participantId, formSlug } = await params
+  const { eventId, instanceNumber: instanceNumberStr } = await searchParams
+  const instanceNumber = instanceNumberStr ? parseInt(instanceNumberStr, 10) : undefined
 
   const supabase = await createClient()
 
@@ -45,7 +52,7 @@ export default async function FormFillPage({
 
   // Fetch existing response (if any) and participant in parallel
   const [existingResponse, participantResult] = await Promise.all([
-    getFormResponse(participantId, formDef.id),
+    getFormResponse(participantId, formDef.id, eventId, instanceNumber),
     supabase
       .from('participants')
       .select('id, study_number, status')
@@ -65,6 +72,25 @@ export default async function FormFillPage({
   const signatures = existingResponse
     ? await getFormSignatures(existingResponse.id)
     : []
+
+  // Extract cross-form field references from rules and fetch data
+  const rules = (formDef.rules ?? []) as Rule[]
+  const allCrossFormRefs = new Set<string>()
+  for (const rule of rules) {
+    for (const expr of [rule.trigger, rule.value]) {
+      if (typeof expr === 'string') {
+        for (const ref of extractFieldRefs(expr)) {
+          if (ref.includes('.')) {
+            allCrossFormRefs.add(ref)
+          }
+        }
+      }
+    }
+  }
+
+  const crossFormData = allCrossFormRefs.size > 0
+    ? await getCrossFormData(participantId, study.id, [...allCrossFormRefs])
+    : undefined
 
   return (
     <div className="p-6 space-y-6">
@@ -86,6 +112,9 @@ export default async function FormFillPage({
         studyId={study.id}
         signatures={signatures}
         userRole={userRole}
+        eventId={eventId}
+        instanceNumber={instanceNumber}
+        crossFormData={crossFormData}
       />
 
       {/* Form response record history (audit trail) */}
